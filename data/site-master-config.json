@@ -1,0 +1,20 @@
+{
+  "siteName": "Dix Tools | منصة الأدوات والخدمات الذكية الشاملة",
+  "siteShortName": "Dix Tools",
+  "arabicBrandTitle": "منصة ديكس تولز للخدمات والأدوات الذكية",
+  "domain": "https://dixtools.com",
+  "description": "منصة Dix Tools (ديكس تولز للخدمات والأدوات الذكية): أكثر من 52 أداة وحاسبة رئيسية شاملة و5,000+ مسار ذكي للذهب والزكاة، العملات، القروض، السيارات، استوديو الصور والـ QR، ومولدات العقود الرسمية A4.",
+  "stealthCommandTitle": "Dix Tools - Stealth Command Center",
+  "secretAdminSlug": "stealth-command-x99",
+  "masterPasskey": "MEEZAN-2026",
+  "welcomeTitle": "مرحباً بك في Dix Tools.. محتاج تعمل إيه النهاردة؟ اكتب طلبك وسأجهز لك الأداة فوراً",
+  "welcomeSubtitle": "اكتب طلبك بالأرقام (مثل: «عاوز أحول 250 دولار لجنيه» أو «تفقيط 125450 جنيه») وسيقوم مساعد Dix Tools بفتح الأداة الشاملة مع ضبط الخانات والنتيجة تلقائياً.",
+  "copyright": "جميع الحقوق محفوظة © Dix Tools",
+  "configVersion": "v2_2026_fuel_update",
+  "fuelPrices": {
+    "fuel80": 20.75,
+    "fuel92": 22.25,
+    "fuel95": 24.0,
+    "diesel": 19.5
+  }
+}

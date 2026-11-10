@@ -1,0 +1,6 @@
+{
+  "name": "مِيزان | منصة الأدوات والحاسبات الذكية",
+  "description": "المنصة العربية الشاملة للحاسبات المالية، أسعار الذهب والعملات بالمصنعية، ضغط الصور، توليد QR، ونماذج العقود والفواتير الجاهزة للطباعة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
