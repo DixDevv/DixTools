@@ -55,6 +55,16 @@ export const DEFAULT_STEALTH_CONFIG = {
     previewMode: true,
     adBlockDetectorEnabled: true,
     adBlockRecoveryMode: 'affiliate-fallback', // 'polite-modal' | 'affiliate-fallback'
+    antiAdBlockFallback: {
+      enabled: true,
+      simulateBlocked: false,
+      badgeText: 'عرض بديل حصري · House Affiliate Banner',
+      headline: 'متجر شركاء Dix Tools: سبائك ذهب معتمدة وبرامج تجارة إلكترونية بخصم فوري 25%',
+      subtext: 'تغليف مؤمّن بالباركود الملكي · شحن سريع للـ 27 محافظة · استشارة مجانية عبر واتساب',
+      iconType: 'gold-store',
+      ctaText: 'انتقل للمتجر أو تواصل عبر واتساب الآن',
+      ctaUrl: 'https://wa.me/201000000000?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20Dix%20Tools%20%D8%A3%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%A7%D8%AF%D8%A9%20%D9%85%D9%86%20%D8%B9%D8%B1%D8%B6%20%D8%A7%D9%84%D9%85%D8%AA%D8%AC%D8%B1',
+    },
     interstitialWaitSeconds: 4,
     placements: {
       header_banner: {
@@ -666,6 +676,17 @@ export const DEFAULT_STEALTH_CONFIG = {
     marketSentimentPollEnabled: true,
     excelExportEnabled: true,
     languageSwitcherEnabled: true,
+    splitScreenEnabled: true,
+    floatingScratchpadEnabled: true,
+  },
+  webhookConfig: {
+    enabled: true,
+    webhookUrl: 'https://hooks.n8n.cloud/webhook/dixtools-egypt-oracle',
+    telegramBotToken: '',
+    telegramChatId: '@DixToolsEgypt',
+    autoScheduleInterval: 'off',
+    lastBroadcastAt: null,
+    broadcastHistory: [],
   },
   smartOfferConfig: {
     enabled: true,
@@ -801,11 +822,19 @@ export function SiteConfigProvider({ children }) {
             adConfig: {
               ...DEFAULT_STEALTH_CONFIG.adConfig,
               ...(parsed.adConfig || {}),
+              antiAdBlockFallback: {
+                ...DEFAULT_STEALTH_CONFIG.adConfig.antiAdBlockFallback,
+                ...(parsed.adConfig?.antiAdBlockFallback || {}),
+              },
               placements: mergedPlacements,
               categoryOverrides: {
                 ...DEFAULT_STEALTH_CONFIG.adConfig.categoryOverrides,
                 ...(parsed.adConfig?.categoryOverrides || {}),
               },
+            },
+            webhookConfig: {
+              ...DEFAULT_STEALTH_CONFIG.webhookConfig,
+              ...(parsed.webhookConfig || {}),
             },
             adAnalytics: {
               ...DEFAULT_STEALTH_CONFIG.adAnalytics,

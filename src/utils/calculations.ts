@@ -2155,3 +2155,247 @@ export function calculateEgyptFinishingBoq(
     },
   };
 }
+
+/* ============================================================================
+ * REVENUE RECOVERY & AUTOMATION PACK:
+ * 1) Dropshipping, Affiliate & E-Commerce Pricing Engine
+ * 2) Webhook & n8n/Telegram Live Egypt Rates Broadcaster Payload Builder
+ * ========================================================================== */
+
+export interface DropshippingPricingInput {
+  productCostCogsEgp: number;
+  sellingPriceEgp?: number;
+  targetNetMarginPercent?: number;
+  platformCommissionPercent: number;
+  shippingFeeDeliveredEgp: number;
+  returnShippingFeeRtoEgp?: number;
+  packagingCostEgp?: number;
+  deliverySuccessRatePercent: number;
+  adSpendCpaPerOrderEgp: number;
+  expectedMonthlyOrdersShipped?: number;
+}
+
+export interface DropshippingPricingResult {
+  productCostCogsEgp: number;
+  effectiveSellingPriceEgp: number;
+  recommendedSellingPriceEgp: number;
+  platformCommissionAmountEgp: number;
+  deliveryRateRatio: number;
+  rtoReturnRatePercent: number;
+  effectiveCpaPerDeliveredOrderEgp: number;
+  rtoPenaltyPerDeliveredOrderEgp: number;
+  totalCostPerDeliveredOrderEgp: number;
+  netProfitPerDeliveredOrderEgp: number;
+  netProfitPerShippedOrderEgp: number;
+  breakEvenCpaEgp: number;
+  breakEvenRoas: number;
+  actualRoas: number;
+  expectedMonthlyOrdersShipped: number;
+  deliveredOrdersMonthly: number;
+  returnedOrdersMonthly: number;
+  expectedMonthlyGrossRevenueEgp: number;
+  expectedMonthlyAdSpendEgp: number;
+  expectedMonthlyNetProfitEgp: number;
+  netProfitMarginPercent: number;
+  isProfitable: boolean;
+}
+
+export function calculateDropshippingAffiliatePricing(
+  input: DropshippingPricingInput
+): DropshippingPricingResult {
+  const cogs = Math.max(0, Number(input.productCostCogsEgp) || 0);
+  const commissionPct = Math.max(0, Math.min(75, Number(input.platformCommissionPercent) || 0));
+  const shippingDelivered = Math.max(0, Number(input.shippingFeeDeliveredEgp) || 0);
+  const returnRtoFee = Math.max(
+    0,
+    input.returnShippingFeeRtoEgp !== undefined
+      ? Number(input.returnShippingFeeRtoEgp)
+      : Math.round(shippingDelivered * 0.65)
+  );
+  const packaging = Math.max(0, Number(input.packagingCostEgp ?? 12));
+  const deliveryPct = Math.max(15, Math.min(100, Number(input.deliverySuccessRatePercent) || 75));
+  const deliveryRatio = deliveryPct / 100;
+  const rtoRatio = 1 - deliveryRatio;
+  const cpaPerShipped = Math.max(0, Number(input.adSpendCpaPerOrderEgp) || 0);
+  const targetMarginPct = Math.max(5, Math.min(65, Number(input.targetNetMarginPercent ?? 25)));
+  const monthlyShipped = Math.max(1, Math.round(Number(input.expectedMonthlyOrdersShipped) || 200));
+
+  // Effective CPA & RTO burden per 1 successfully delivered order
+  const effectiveCpaPerDelivered = cpaPerShipped / deliveryRatio;
+  const rtoPenaltyPerDelivered =
+    ((returnRtoFee + packaging) * rtoRatio) / deliveryRatio;
+
+  // Base fixed cost per delivered order (before platform % commission)
+  const baseUnitCostBeforeCommission =
+    cogs + shippingDelivered + packaging + effectiveCpaPerDelivered + rtoPenaltyPerDelivered;
+
+  // Recommended selling price so that after platformCommissionPct and targetMarginPct we cover baseUnitCostBeforeCommission
+  const keepRatio = Math.max(0.15, 1 - (commissionPct + targetMarginPct) / 100);
+  const recommendedSellingPriceEgp = Math.ceil(baseUnitCostBeforeCommission / keepRatio / 5) * 5;
+
+  const effectiveSellingPriceEgp =
+    Number(input.sellingPriceEgp) > 0
+      ? Number(input.sellingPriceEgp)
+      : recommendedSellingPriceEgp;
+
+  const platformCommissionAmountEgp = Number(
+    ((effectiveSellingPriceEgp * commissionPct) / 100).toFixed(2)
+  );
+
+  const totalCostPerDeliveredOrderEgp = Number(
+    (baseUnitCostBeforeCommission + platformCommissionAmountEgp).toFixed(2)
+  );
+
+  const netProfitPerDeliveredOrderEgp = Number(
+    (effectiveSellingPriceEgp - totalCostPerDeliveredOrderEgp).toFixed(2)
+  );
+  const netProfitPerShippedOrderEgp = Number(
+    (netProfitPerDeliveredOrderEgp * deliveryRatio).toFixed(2)
+  );
+
+  // Break-even CPA (per shipped order): maximum CPA where netProfitPerDeliveredOrder = 0
+  const marginBeforeAdsPerDelivered =
+    effectiveSellingPriceEgp -
+    (cogs +
+      shippingDelivered +
+      packaging +
+      rtoPenaltyPerDelivered +
+      platformCommissionAmountEgp);
+  const breakEvenCpaEgp = Number(
+    Math.max(0, marginBeforeAdsPerDelivered * deliveryRatio).toFixed(2)
+  );
+
+  // Break-even ROAS = Selling Price / Break-Even CPA per delivered order
+  const breakEvenCpaPerDelivered = Math.max(1, marginBeforeAdsPerDelivered);
+  const breakEvenRoas = Number(
+    (effectiveSellingPriceEgp / breakEvenCpaPerDelivered).toFixed(2)
+  );
+  const actualRoas =
+    effectiveCpaPerDelivered > 0
+      ? Number((effectiveSellingPriceEgp / effectiveCpaPerDelivered).toFixed(2))
+      : 0;
+
+  const deliveredOrdersMonthly = Math.round(monthlyShipped * deliveryRatio);
+  const returnedOrdersMonthly = Math.max(0, monthlyShipped - deliveredOrdersMonthly);
+  const expectedMonthlyGrossRevenueEgp = Math.round(
+    deliveredOrdersMonthly * effectiveSellingPriceEgp
+  );
+  const expectedMonthlyAdSpendEgp = Math.round(monthlyShipped * cpaPerShipped);
+  const expectedMonthlyNetProfitEgp = Math.round(
+    deliveredOrdersMonthly * netProfitPerDeliveredOrderEgp
+  );
+
+  const netProfitMarginPercent =
+    effectiveSellingPriceEgp > 0
+      ? Number(((netProfitPerDeliveredOrderEgp / effectiveSellingPriceEgp) * 100).toFixed(1))
+      : 0;
+
+  return {
+    productCostCogsEgp: cogs,
+    effectiveSellingPriceEgp,
+    recommendedSellingPriceEgp,
+    platformCommissionAmountEgp,
+    deliveryRateRatio: Number(deliveryRatio.toFixed(2)),
+    rtoReturnRatePercent: Number((rtoRatio * 100).toFixed(1)),
+    effectiveCpaPerDeliveredOrderEgp: Number(effectiveCpaPerDelivered.toFixed(2)),
+    rtoPenaltyPerDeliveredOrderEgp: Number(rtoPenaltyPerDelivered.toFixed(2)),
+    totalCostPerDeliveredOrderEgp,
+    netProfitPerDeliveredOrderEgp,
+    netProfitPerShippedOrderEgp,
+    breakEvenCpaEgp,
+    breakEvenRoas,
+    actualRoas,
+    expectedMonthlyOrdersShipped: monthlyShipped,
+    deliveredOrdersMonthly,
+    returnedOrdersMonthly,
+    expectedMonthlyGrossRevenueEgp,
+    expectedMonthlyAdSpendEgp,
+    expectedMonthlyNetProfitEgp,
+    netProfitMarginPercent,
+    isProfitable: expectedMonthlyNetProfitEgp > 0,
+  };
+}
+
+export function buildEgyptLiveRatesBroadcastPayload(
+  liveRates: Record<string, any> = {},
+  siteDomain = 'https://dixtools.com'
+) {
+  const gold21 = Number(liveRates?.gold?.karat21) || 3811;
+  const gold24 = Number(liveRates?.gold?.karat24) || 4355;
+  const gold18 = Number(liveRates?.gold?.karat18) || 3266;
+  const goldCoin8g = Number(liveRates?.gold?.goldCoin8g) || 30488;
+
+  const usd = Number(liveRates?.currenciesToEgp?.USD) || 50.45;
+  const sar = Number(liveRates?.currenciesToEgp?.SAR) || 13.45;
+  const aed = Number(liveRates?.currenciesToEgp?.AED) || 13.74;
+  const kwd = Number(liveRates?.currenciesToEgp?.KWD) || 164.2;
+  const eur = Number(liveRates?.currenciesToEgp?.EUR) || 54.6;
+
+  const fuel80 = Number(liveRates?.energyAndUtilities?.fuel80) || 20.75;
+  const fuel92 = Number(liveRates?.energyAndUtilities?.fuel92) || 22.25;
+  const fuel95 = Number(liveRates?.energyAndUtilities?.fuel95) || 24.0;
+  const diesel = Number(liveRates?.energyAndUtilities?.diesel) || 19.5;
+
+  const timestampCairo =
+    liveRates?.lastUpdatedArabic ||
+    new Date().toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' });
+
+  const formattedMessage = [
+    '🚨 *نشرة أسعار مصر اللحظية اليوم — منصة Dix Tools*',
+    `🕒 التحديث اللحظي: ${timestampCairo}`,
+    '━━━━━━━━━━━━━━━━━━',
+    '🪙 *أسعار الذهب اليوم في مصر (بدون مصنعية):*',
+    `• ذهب عيار 21: *${gold21.toLocaleString('en-US')} ج.م*`,
+    `• ذهب عيار 24: *${gold24.toLocaleString('en-US')} ج.م*`,
+    `• ذهب عيار 18: *${gold18.toLocaleString('en-US')} ج.م*`,
+    `• الجنيه الذهب (8 جرام): *${goldCoin8g.toLocaleString('en-US')} ج.م*`,
+    '',
+    '💵 *أسعار العملات أمام الجنيه المصري:*',
+    `• الدولار الأمريكي (USD): *${usd.toFixed(2)} ج.م*`,
+    `• الريال السعودي (SAR): *${sar.toFixed(2)} ج.م*`,
+    `• الدرهم الإماراتي (AED): *${aed.toFixed(2)} ج.م*`,
+    `• الدينار الكويتي (KWD): *${kwd.toFixed(2)} ج.م*`,
+    `• اليورو الأوروبي (EUR): *${eur.toFixed(2)} ج.م*`,
+    '',
+    '⛽ *أسعار البنزين والوقود الرسمية في مصر:*',
+    `• بنزين 80: *${fuel80.toFixed(2)} ج.م/لتر*`,
+    `• بنزين 92: *${fuel92.toFixed(2)} ج.م/لتر*`,
+    `• بنزين 95: *${fuel95.toFixed(2)} ج.م/لتر*`,
+    `• السولار: *${diesel.toFixed(2)} ج.م/لتر*`,
+    '━━━━━━━━━━━━━━━━━━',
+    `🔗 *احسب مصنعية الذهب والعملات والوقود لحظياً عبر منصة Dix Tools:*`,
+    `${siteDomain}`,
+  ].join('\n');
+
+  const jsonPayload = {
+    source: 'Dix Tools Live Egypt Oracle',
+    siteUrl: siteDomain,
+    timestampCairo,
+    goldEgp: {
+      karat21: gold21,
+      karat24: gold24,
+      karat18: gold18,
+      goldCoin8g,
+    },
+    currenciesToEgp: {
+      USD: usd,
+      SAR: sar,
+      AED: aed,
+      KWD: kwd,
+      EUR: eur,
+    },
+    fuelPricesEgp: {
+      fuel80,
+      fuel92,
+      fuel95,
+      diesel,
+    },
+    formattedSocialPost: formattedMessage,
+  };
+
+  return {
+    formattedMessage,
+    jsonPayload,
+  };
+}
+

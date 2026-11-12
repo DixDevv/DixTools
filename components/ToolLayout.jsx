@@ -13,6 +13,8 @@ import {
   Check,
   Tag,
   Star,
+  Columns2,
+  Pin,
 } from 'lucide-react';
 import AdSlot from './AdSlot';
 import ToolDynamicBanner from './ToolDynamicBanner';
@@ -22,6 +24,7 @@ import EmbedToolModal from './EmbedToolModal';
 import ShareResultCard from './ShareResultCard';
 import SmartOfferBanner from './SmartOfferBanner';
 import MarketSentimentPoll from './MarketSentimentPoll';
+import SplitScreenWorkspace from './SplitScreenWorkspace';
 import { useUserToolsMemory } from '../hooks/useUserToolsMemory';
 import {
   buildFreshToolSeoMeta,
@@ -43,6 +46,7 @@ export default function ToolLayout({
   children,
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
+  const [splitViewOpen, setSplitViewOpen] = useState(false);
   const { isFavoriteTool, toggleFavoriteTool } = useUserToolsMemory();
 
   let siteConfigCtx = null;
@@ -193,7 +197,51 @@ export default function ToolLayout({
           </li>
         </ol>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-400">
+          {siteConfigCtx?.config?.viralFeatures?.splitScreenEnabled !== false && (
+            <button
+              type="button"
+              data-testid="toggle-split-screen-btn"
+              onClick={() => setSplitViewOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                splitViewOpen
+                  ? 'bg-[#D4AF37] border-[#D4AF37] text-black font-black shadow-md'
+                  : 'bg-[#141414] border-[#D4AF37]/50 text-[#F3E5AB] hover:bg-[#D4AF37]/20 font-bold'
+              }`}
+            >
+              <Columns2 className="w-3.5 h-3.5" />
+              <span>
+                {splitViewOpen
+                  ? '✕ إغلاق الشاشة المزدوجة (Split View)'
+                  : '🗔 فتح أداة ثانية بجانبها (Split View)'}
+              </span>
+            </button>
+          )}
+
+          {siteConfigCtx?.config?.viralFeatures?.floatingScratchpadEnabled !== false && (
+            <button
+              type="button"
+              data-testid="pin-tool-result-btn"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(
+                    new CustomEvent('dix:pin-number', {
+                      detail: {
+                        label: effectiveTool.shortTitle || effectiveTool.title,
+                        value: firstSampleRow ? firstSampleRow.col2 : 3811,
+                        unit: 'ج.م',
+                      },
+                    })
+                  );
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#141414] border border-neutral-800 text-slate-300 hover:border-[#D4AF37] hover:text-[#F3E5AB] transition-all cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Pin className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>📌 حفظ في المفكرة</span>
+            </button>
+          )}
+
           <button
             type="button"
             data-testid="tool-layout-favorite-btn"
@@ -267,14 +315,24 @@ export default function ToolLayout({
         />
       </div>
 
-      {/* Main 2-Column Workspace + Sticky Sidebar */}
+      {/* Main 2-Column Workspace + Sticky Sidebar (or Split-Screen Dual Tool Mode) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div id="tools-workspace" className="lg:col-span-8 space-y-8">
-          <section
-            aria-label={effectiveTool.title}
-            className="rounded-2xl border border-neutral-800 bg-[#141414] p-5 sm:p-7 shadow-2xl min-h-[380px] space-y-6"
+        <div
+          id="tools-workspace"
+          className={splitViewOpen ? 'lg:col-span-12 space-y-8' : 'lg:col-span-8 space-y-8'}
+        >
+          <div
+            className={
+              splitViewOpen
+                ? 'grid grid-cols-1 xl:grid-cols-2 gap-6 items-start'
+                : 'space-y-8'
+            }
           >
-            {children}
+            <section
+              aria-label={effectiveTool.title}
+              className="rounded-2xl border border-neutral-800 bg-[#141414] p-5 sm:p-7 shadow-2xl min-h-[380px] space-y-6"
+            >
+              {children}
 
             {/* Viral Result Receipt Card Generator ("📤 مشاركة النتيجة كصورة / واتساب") */}
             <ShareResultCard
@@ -310,7 +368,19 @@ export default function ToolLayout({
               category={effectiveTool.category}
               label="إعلان بجوار منطقة الفعل والنتيجة (before_action_button)"
             />
-          </section>
+            </section>
+
+            {splitViewOpen && (
+              <SplitScreenWorkspace
+                primaryTool={effectiveTool}
+                allMasterTools={siteConfigCtx?.effectiveMasterTools || allTools}
+                onCloseSplitView={() => setSplitViewOpen(false)}
+                onNavigateFullTool={(cat, slg) =>
+                  onSelectTool && onSelectTool({ category: cat, slug: slg })
+                }
+              />
+            )}
+          </div>
 
           {/* Automatic Backlink Magnet: Embed Tool Button & Modal */}
           <EmbedToolModal tool={effectiveTool} />

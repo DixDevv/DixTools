@@ -10,6 +10,7 @@ import HomePage from '../app/page.jsx';
 import DynamicToolPage from '../app/[category]/[slug]/page.jsx';
 import StealthAdminRoutePage from '../app/[secretAdminRoute]/page.jsx';
 import EmbedToolPage from '../app/embed/[slug]/page.jsx';
+import EgyptRatesWidgetEmbedPage from '../app/embed/egypt-rates-widget/page.jsx';
 import sitemap from '../app/sitemap.js';
 import {
   SiteConfigProvider,
@@ -23,6 +24,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import LiveEgyptTicker from '../components/LiveEgyptTicker';
 import CommandPalette from '../components/CommandPalette';
+import FloatingScratchpad from '../components/FloatingScratchpad';
 import { resolveRedirectRule } from './utils/calculations';
 import { X, Sparkles, Megaphone, Wrench } from 'lucide-react';
 
@@ -185,6 +187,13 @@ function AppShell() {
 
   // Standalone Chromeless Embed View (/embed/[slug]) — without site Header or Footer
   if (route.view === 'embed') {
+    if (route.slug === 'egypt-rates-widget') {
+      return (
+        <EgyptRatesWidgetEmbedPage
+          onOpenFullTool={(cat: string, slg: string) => navigateToTool(cat, slg)}
+        />
+      );
+    }
     return (
       <EmbedToolPage
         params={{ slug: route.slug }}
@@ -316,6 +325,9 @@ function AppShell() {
 
       {/* Global AdOps Overlays (Sticky Bottom Mobile Anchor + Interstitial Modal + AdBlock Recovery) */}
       <GlobalAdOpsOverlays />
+
+      {/* Floating Financial Scratchpad (Quick Pinboard) */}
+      <FloatingScratchpad />
 
       {/* Module 4: Smart Promotional Popup Modal */}
       {popupOpen && config.uiCustomizer?.smartPopup?.enabled && (

@@ -53,6 +53,8 @@ import {
   renderBulkSeoTemplate,
 } from '../../src/utils/calculations';
 import SiteQADiagnosticSuite from '../../components/admin/SiteQADiagnosticSuite';
+import WebhookAutomationStudio from '../../components/admin/WebhookAutomationStudio';
+import { AntiAdBlockFallback } from '../../components/AdSlot';
 
 const GOD_MODE_TABS = [
   {
@@ -117,6 +119,13 @@ const GOD_MODE_TABS = [
     label: '🧪 فحص واختبار الموقع الشامل',
     sub: 'Live QA & System Tester',
     icon: Sparkles,
+  },
+  {
+    id: 'webhook-broadcaster',
+    num: '10',
+    label: '🤖 أتمتة النشر والـ Webhooks',
+    sub: 'n8n / Telegram Integration',
+    icon: Bot,
   },
 ];
 
@@ -1406,6 +1415,128 @@ export default function StealthAdminRoutePage({ params, onGoHome, onOpenTool }) 
               </div>
             </div>
           </div>
+
+          {/* 1. درع استرداد أرباح مانع الإعلانات (AntiAdBlockFallback - House Affiliate / Store Banner) */}
+          <div
+            data-testid="admin-anti-adblock-fallback-editor"
+            className="rounded-2xl border-2 border-[#D4AF37]/60 bg-[#0A0A0A] p-5 space-y-4"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 pb-3">
+              <div>
+                <h3 className="text-sm font-black text-[#D4AF37]">
+                  🛡️ درع استرداد أرباح مانع الإعلانات (AntiAdBlockFallback — House Affiliate / Store Banner)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  عند اكتشاف مانع إعلانات لدى الزائر، يتم استبدال المساحات المحظورة تلقائياً ببطاقة عرض فخمة لمتجرك أو واتساب.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-testid="toggle-simulate-adblock-btn"
+                  onClick={() =>
+                    updateSection('adConfig', {
+                      antiAdBlockFallback: {
+                        ...(config.adConfig?.antiAdBlockFallback || {}),
+                        simulateBlocked: !config.adConfig?.antiAdBlockFallback?.simulateBlocked,
+                      },
+                    })
+                  }
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black cursor-pointer border ${
+                    config.adConfig?.antiAdBlockFallback?.simulateBlocked
+                      ? 'bg-emerald-500 text-black border-emerald-400'
+                      : 'bg-[#141414] text-[#F3E5AB] border-[#D4AF37]/40'
+                  }`}
+                >
+                  {config.adConfig?.antiAdBlockFallback?.simulateBlocked
+                    ? '✓ وضع محاكاة الحظر نشط في الموقع'
+                    : 'تفعيل محاكاة الحظر لمعاينة البطاقة البديلة'}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">عنوان البطاقة البديلة</label>
+                <input
+                  type="text"
+                  data-testid="anti-adblock-headline-input"
+                  value={config.adConfig?.antiAdBlockFallback?.headline || ''}
+                  onChange={(e) =>
+                    updateSection('adConfig', {
+                      antiAdBlockFallback: {
+                        ...(config.adConfig?.antiAdBlockFallback || {}),
+                        headline: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-xl bg-[#141414] border border-neutral-800 px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">الوصف الترويجي</label>
+                <input
+                  type="text"
+                  value={config.adConfig?.antiAdBlockFallback?.subtext || ''}
+                  onChange={(e) =>
+                    updateSection('adConfig', {
+                      antiAdBlockFallback: {
+                        ...(config.adConfig?.antiAdBlockFallback || {}),
+                        subtext: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-xl bg-[#141414] border border-neutral-800 px-3 py-2 text-xs text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">نص زر الانتقال (CTA)</label>
+                <input
+                  type="text"
+                  value={config.adConfig?.antiAdBlockFallback?.ctaText || ''}
+                  onChange={(e) =>
+                    updateSection('adConfig', {
+                      antiAdBlockFallback: {
+                        ...(config.adConfig?.antiAdBlockFallback || {}),
+                        ctaText: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full rounded-xl bg-[#141414] border border-neutral-800 px-3 py-2 text-xs text-[#F3E5AB]"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">رابط المتجر أو واتساب</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={config.adConfig?.antiAdBlockFallback?.ctaUrl || ''}
+                  onChange={(e) =>
+                    updateSection('adConfig', {
+                      antiAdBlockFallback: {
+                        ...(config.adConfig?.antiAdBlockFallback || {}),
+                        ctaUrl: e.target.value,
+                      },
+                    })
+                  }
+                  className="font-num w-full rounded-xl bg-[#141414] border border-neutral-800 px-3 py-2 text-xs text-[#D4AF37]"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <span className="text-[11px] font-bold text-slate-400 block mb-2">
+                معاينة حية لبطاقة استرداد الأرباح (AntiAdBlockFallback Live Preview):
+              </span>
+              <AntiAdBlockFallback
+                fallbackConfig={config.adConfig?.antiAdBlockFallback || {}}
+                placement="admin_preview"
+              />
+            </div>
+          </div>
         </section>
       )}
 
@@ -2147,6 +2278,14 @@ export default function StealthAdminRoutePage({ params, onGoHome, onOpenTool }) 
                 {
                   key: 'languageSwitcherEnabled',
                   label: '9. مبدل اللغات التفاعلي (AR / EN) في الهيدر',
+                },
+                {
+                  key: 'splitScreenEnabled',
+                  label: '10. وضع الشاشة المزدوجة للأدوات (Split View)',
+                },
+                {
+                  key: 'floatingScratchpadEnabled',
+                  label: '11. المفكرة المالية العائمة (Quick Pinboard)',
                 },
               ].map((feat) => {
                 const isEnabled = config.viralFeatures?.[feat.key] !== false;
@@ -3088,6 +3227,13 @@ export default function StealthAdminRoutePage({ params, onGoHome, onOpenTool }) 
        * =================================================================== */}
       {activeTab === 'qa-diagnostic-suite' && (
         <SiteQADiagnosticSuite onOpenTool={onOpenTool} showToast={showToast} />
+      )}
+
+      {/* =====================================================================
+       * MODULE 10: WEBHOOK & N8N / TELEGRAM BROADCASTER
+       * =================================================================== */}
+      {activeTab === 'webhook-broadcaster' && (
+        <WebhookAutomationStudio showToast={showToast} />
       )}
     </div>
   );

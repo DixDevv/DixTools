@@ -40,6 +40,7 @@ import {
   calculateCodShippingReconciliation,
   calculateRideDriverProfit,
   calculateAcBtuAndHorsepower,
+  calculateDropshippingAffiliatePricing,
 } from '../engines/ExpandedMasterEngines';
 import {
   PROMO_STUDIO_TEMPLATES,
@@ -47,7 +48,7 @@ import {
 } from '../tools/ProductPromoStudio';
 
 /**
- * Pure diagnostic runner that executes sample calculations across all 107 Master Hub Tools
+ * Pure diagnostic runner that executes sample calculations across all 108 Master Hub Tools
  * and verifies that every tool engine produces valid finite numbers with zero NaN/undefined.
  * Exported so it can also be unit-tested in Node (`src/utils/calculations.test.ts`).
  */
@@ -91,6 +92,26 @@ export function runMasterToolsEngineStressTest(toolsList, liveRates = {}) {
           removedCount === 1 &&
           samplePixels[3] === 0 &&
           samplePixels[7] === 255;
+      } else if (slug === 'dropshipping-affiliate-pricing-engine') {
+        const drop = calculateDropshippingAffiliatePricing({
+          productCostCogsEgp: 320,
+          packagingCostEgp: 15,
+          platformCommissionPercent: 8,
+          shippingFeeDeliveredEgp: 65,
+          returnShippingFeeRtoEgp: 35,
+          deliverySuccessRatePercent: 82,
+          adSpendCpaPerOrderEgp: 110,
+          targetNetMarginPercent: 25,
+          sellingPriceEgp: 799,
+          expectedMonthlyOrdersShipped: 300,
+        });
+        sampleOutput = drop.recommendedSellingPriceEgp;
+        formulaUsed = `Dropshipping & ROAS Engine (Break-Even ROAS ${drop.breakEvenRoas}x)`;
+        passed =
+          Number.isFinite(sampleOutput) &&
+          sampleOutput > 0 &&
+          Number.isFinite(drop.breakEvenRoas) &&
+          Number.isFinite(drop.expectedMonthlyNetProfitEgp);
       } else if (slug === 'gold-vs-bank-comparator') {
         const cmp = calculateInvestmentComparison({
           capitalAmountEgp: 250000,

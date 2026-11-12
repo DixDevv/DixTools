@@ -2766,7 +2766,414 @@ function UniversalExpandedCalculatorEngine({ tool }) {
 }
 
 /* ============================================================================
- * MAIN EXPORTED ROUTER FOR ALL 48 EXPANDED MASTER HUB TOOLS
+ * 7. DROPSHIPPING, AFFILIATE & E-COMMERCE PRICING ENGINE
+ * (`dropshipping-affiliate-pricing-engine`)
+ * ========================================================================== */
+export function calculateDropshippingAffiliatePricing(input = {}) {
+  const cogs = Math.max(0, Number(input.productCostCogsEgp) || 0);
+  const commissionPct = Math.max(0, Math.min(75, Number(input.platformCommissionPercent) || 0));
+  const shippingDelivered = Math.max(0, Number(input.shippingFeeDeliveredEgp) || 0);
+  const returnRtoFee = Math.max(
+    0,
+    input.returnShippingFeeRtoEgp !== undefined
+      ? Number(input.returnShippingFeeRtoEgp)
+      : Math.round(shippingDelivered * 0.65)
+  );
+  const packaging = Math.max(0, Number(input.packagingCostEgp ?? 12));
+  const deliveryPct = Math.max(15, Math.min(100, Number(input.deliverySuccessRatePercent) || 75));
+  const deliveryRatio = deliveryPct / 100;
+  const rtoRatio = 1 - deliveryRatio;
+  const cpaPerShipped = Math.max(0, Number(input.adSpendCpaPerOrderEgp) || 0);
+  const targetMarginPct = Math.max(5, Math.min(65, Number(input.targetNetMarginPercent ?? 25)));
+  const monthlyShipped = Math.max(1, Math.round(Number(input.expectedMonthlyOrdersShipped) || 200));
+
+  const effectiveCpaPerDelivered = cpaPerShipped / deliveryRatio;
+  const rtoPenaltyPerDelivered = ((returnRtoFee + packaging) * rtoRatio) / deliveryRatio;
+
+  const baseUnitCostBeforeCommission =
+    cogs + shippingDelivered + packaging + effectiveCpaPerDelivered + rtoPenaltyPerDelivered;
+
+  const keepRatio = Math.max(0.15, 1 - (commissionPct + targetMarginPct) / 100);
+  const recommendedSellingPriceEgp = Math.ceil(baseUnitCostBeforeCommission / keepRatio / 5) * 5;
+
+  const effectiveSellingPriceEgp =
+    Number(input.sellingPriceEgp) > 0
+      ? Number(input.sellingPriceEgp)
+      : recommendedSellingPriceEgp;
+
+  const platformCommissionAmountEgp = Number(
+    ((effectiveSellingPriceEgp * commissionPct) / 100).toFixed(2)
+  );
+
+  const totalCostPerDeliveredOrderEgp = Number(
+    (baseUnitCostBeforeCommission + platformCommissionAmountEgp).toFixed(2)
+  );
+
+  const netProfitPerDeliveredOrderEgp = Number(
+    (effectiveSellingPriceEgp - totalCostPerDeliveredOrderEgp).toFixed(2)
+  );
+  const netProfitPerShippedOrderEgp = Number(
+    (netProfitPerDeliveredOrderEgp * deliveryRatio).toFixed(2)
+  );
+
+  const marginBeforeAdsPerDelivered =
+    effectiveSellingPriceEgp -
+    (cogs +
+      shippingDelivered +
+      packaging +
+      rtoPenaltyPerDelivered +
+      platformCommissionAmountEgp);
+  const breakEvenCpaEgp = Number(
+    Math.max(0, marginBeforeAdsPerDelivered * deliveryRatio).toFixed(2)
+  );
+
+  const breakEvenCpaPerDelivered = Math.max(1, marginBeforeAdsPerDelivered);
+  const breakEvenRoas = Number(
+    (effectiveSellingPriceEgp / breakEvenCpaPerDelivered).toFixed(2)
+  );
+  const actualRoas =
+    effectiveCpaPerDelivered > 0
+      ? Number((effectiveSellingPriceEgp / effectiveCpaPerDelivered).toFixed(2))
+      : 0;
+
+  const deliveredOrdersMonthly = Math.round(monthlyShipped * deliveryRatio);
+  const returnedOrdersMonthly = Math.max(0, monthlyShipped - deliveredOrdersMonthly);
+  const expectedMonthlyGrossRevenueEgp = Math.round(
+    deliveredOrdersMonthly * effectiveSellingPriceEgp
+  );
+  const expectedMonthlyAdSpendEgp = Math.round(monthlyShipped * cpaPerShipped);
+  const expectedMonthlyNetProfitEgp = Math.round(
+    deliveredOrdersMonthly * netProfitPerDeliveredOrderEgp
+  );
+
+  const netProfitMarginPercent =
+    effectiveSellingPriceEgp > 0
+      ? Number(((netProfitPerDeliveredOrderEgp / effectiveSellingPriceEgp) * 100).toFixed(1))
+      : 0;
+
+  return {
+    productCostCogsEgp: cogs,
+    effectiveSellingPriceEgp,
+    recommendedSellingPriceEgp,
+    platformCommissionAmountEgp,
+    deliveryRateRatio: Number(deliveryRatio.toFixed(2)),
+    rtoReturnRatePercent: Number((rtoRatio * 100).toFixed(1)),
+    effectiveCpaPerDeliveredOrderEgp: Number(effectiveCpaPerDelivered.toFixed(2)),
+    rtoPenaltyPerDeliveredOrderEgp: Number(rtoPenaltyPerDelivered.toFixed(2)),
+    totalCostPerDeliveredOrderEgp,
+    netProfitPerDeliveredOrderEgp,
+    netProfitPerShippedOrderEgp,
+    breakEvenCpaEgp,
+    breakEvenRoas,
+    actualRoas,
+    expectedMonthlyOrdersShipped: monthlyShipped,
+    deliveredOrdersMonthly,
+    returnedOrdersMonthly,
+    expectedMonthlyGrossRevenueEgp,
+    expectedMonthlyAdSpendEgp,
+    expectedMonthlyNetProfitEgp,
+    netProfitMarginPercent,
+    isProfitable: expectedMonthlyNetProfitEgp > 0,
+  };
+}
+
+function DropshippingAffiliatePricingEngine({ defaultParams = {} }) {
+  const [productCostCogsEgp, setProductCostCogsEgp] = useState(
+    Number(defaultParams.productCostCogsEgp) || 220
+  );
+  const [sellingPriceEgp, setSellingPriceEgp] = useState(
+    Number(defaultParams.sellingPriceEgp) || 690
+  );
+  const [targetNetMarginPercent, setTargetNetMarginPercent] = useState(
+    Number(defaultParams.targetNetMarginPercent) || 25
+  );
+  const [platformCommissionPercent, setPlatformCommissionPercent] = useState(
+    Number(defaultParams.platformCommissionPercent) || 10
+  );
+  const [shippingFeeDeliveredEgp, setShippingFeeDeliveredEgp] = useState(
+    Number(defaultParams.shippingFeeDeliveredEgp) || 65
+  );
+  const [returnShippingFeeRtoEgp, setReturnShippingFeeRtoEgp] = useState(
+    Number(defaultParams.returnShippingFeeRtoEgp) || 45
+  );
+  const [packagingCostEgp, setPackagingCostEgp] = useState(
+    Number(defaultParams.packagingCostEgp) || 12
+  );
+  const [deliverySuccessRatePercent, setDeliverySuccessRatePercent] = useState(
+    Number(defaultParams.deliverySuccessRatePercent) || 75
+  );
+  const [adSpendCpaPerOrderEgp, setAdSpendCpaPerOrderEgp] = useState(
+    Number(defaultParams.adSpendCpaPerOrderEgp) || 110
+  );
+  const [expectedMonthlyOrdersShipped, setExpectedMonthlyOrdersShipped] = useState(
+    Number(defaultParams.expectedMonthlyOrdersShipped) || 300
+  );
+
+  const metrics = useMemo(
+    () =>
+      calculateDropshippingAffiliatePricing({
+        productCostCogsEgp,
+        sellingPriceEgp,
+        targetNetMarginPercent,
+        platformCommissionPercent,
+        shippingFeeDeliveredEgp,
+        returnShippingFeeRtoEgp,
+        packagingCostEgp,
+        deliverySuccessRatePercent,
+        adSpendCpaPerOrderEgp,
+        expectedMonthlyOrdersShipped,
+      }),
+    [
+      productCostCogsEgp,
+      sellingPriceEgp,
+      targetNetMarginPercent,
+      platformCommissionPercent,
+      shippingFeeDeliveredEgp,
+      returnShippingFeeRtoEgp,
+      packagingCostEgp,
+      deliverySuccessRatePercent,
+      adSpendCpaPerOrderEgp,
+      expectedMonthlyOrdersShipped,
+    ]
+  );
+
+  return (
+    <div
+      id="tool-interactive-engine"
+      data-testid="dropshipping-affiliate-pricing-engine"
+      className="space-y-6"
+    >
+      {/* Inputs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            تكلفة المنتج الأساسية (COGS ج.م)
+          </span>
+          <input
+            type="number"
+            data-testid="dropship-cogs-input"
+            value={productCostCogsEgp}
+            onChange={(e) => setProductCostCogsEgp(Number(e.target.value) || 0)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            سعر البيع للعميل (Selling Price ج.م)
+          </span>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              data-testid="dropship-selling-price-input"
+              value={sellingPriceEgp}
+              onChange={(e) => setSellingPriceEgp(Number(e.target.value) || 0)}
+              className="font-num flex-1 rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-[#D4AF37] focus:border-[#D4AF37] focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setSellingPriceEgp(metrics.recommendedSellingPriceEgp)}
+              className="px-2.5 py-2 rounded-lg bg-[#D4AF37]/20 border border-[#D4AF37] text-[10px] font-black text-[#F3E5AB] cursor-pointer shrink-0"
+              title="تطبيق السعر المثالي المقترح"
+            >
+              تطبيق المثالي ({metrics.recommendedSellingPriceEgp})
+            </button>
+          </div>
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            عمولة المنصة / الأفلييت (%)
+          </span>
+          <input
+            type="number"
+            value={platformCommissionPercent}
+            onChange={(e) => setPlatformCommissionPercent(Number(e.target.value) || 0)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            تكلفة الشحن للأوردر المسلّم (ج.م)
+          </span>
+          <input
+            type="number"
+            value={shippingFeeDeliveredEgp}
+            onChange={(e) => setShippingFeeDeliveredEgp(Number(e.target.value) || 0)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            نسبة التسليم الفعلية (Delivery Rate %): {deliverySuccessRatePercent}%
+          </span>
+          <input
+            type="range"
+            min="30"
+            max="100"
+            value={deliverySuccessRatePercent}
+            onChange={(e) => setDeliverySuccessRatePercent(Number(e.target.value) || 75)}
+            className="w-full accent-[#D4AF37]"
+          />
+          <div className="flex justify-between text-[10px] text-slate-400 font-num">
+            <span>مرتجع RTO: {metrics.rtoReturnRatePercent}%</span>
+            <span>تغليف: {packagingCostEgp} ج.م | غرامة مرتجع: {returnShippingFeeRtoEgp} ج.م</span>
+          </div>
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            تكلفة الإعلان للأوردر المشحون (CPA ج.م)
+          </span>
+          <input
+            type="number"
+            data-testid="dropship-cpa-input"
+            value={adSpendCpaPerOrderEgp}
+            onChange={(e) => setAdSpendCpaPerOrderEgp(Number(e.target.value) || 0)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            عدد الأوردرات المشحونة شهرياً
+          </span>
+          <input
+            type="number"
+            value={expectedMonthlyOrdersShipped}
+            onChange={(e) => setExpectedMonthlyOrdersShipped(Number(e.target.value) || 1)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            غرامة شحن المرتجع (RTO Fee ج.م)
+          </span>
+          <input
+            type="number"
+            value={returnShippingFeeRtoEgp}
+            onChange={(e) => setReturnShippingFeeRtoEgp(Number(e.target.value) || 0)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+
+        <label className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-3.5 space-y-1.5 block">
+          <span className="text-xs font-bold text-slate-300">
+            هامش الربح الصافي المستهدف للتسعير المثالي (%)
+          </span>
+          <input
+            type="number"
+            value={targetNetMarginPercent}
+            onChange={(e) => setTargetNetMarginPercent(Number(e.target.value) || 20)}
+            className="font-num w-full rounded-lg bg-[#141414] border border-neutral-800 px-3 py-2 text-sm font-black text-white focus:border-[#D4AF37] focus:outline-none"
+          />
+        </label>
+      </div>
+
+      {/* Primary KPI Results Dashboard */}
+      <div
+        id="tool-result-card"
+        className="rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-br from-[#171307] via-[#0E0E0E] to-[#0A0A0A] p-6 space-y-5 shadow-2xl"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-[#D4AF37]/50 bg-[#0A0A0A] p-4">
+            <div className="text-xs text-slate-400">السعر المثالي المقترح للبيع</div>
+            <div
+              data-testid="dropship-recommended-price"
+              className="font-num text-2xl font-black text-[#D4AF37] mt-1"
+            >
+              {metrics.recommendedSellingPriceEgp.toLocaleString('en-US')} ج.م
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              لتحقيق صافي ربح {targetNetMarginPercent}% بعد المرتجعات
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-4">
+            <div className="text-xs text-slate-400">نقطة التعادل للـ ROAS والـ CPA</div>
+            <div
+              data-testid="dropship-breakeven-roas"
+              className="font-num text-2xl font-black text-[#F3E5AB] mt-1"
+            >
+              {metrics.breakEvenRoas}x ROAS
+            </div>
+            <div className="text-[11px] text-emerald-400 font-num mt-1">
+              أقصى CPA للتعادل: {metrics.breakEvenCpaEgp} ج.م | الفعلي: {metrics.actualRoas}x
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-neutral-800 bg-[#0A0A0A] p-4">
+            <div className="text-xs text-slate-400">صافي الربح للأوردر المسلّم</div>
+            <div
+              className={`font-num text-2xl font-black mt-1 ${
+                metrics.netProfitPerDeliveredOrderEgp >= 0 ? 'text-emerald-400' : 'text-red-400'
+              }`}
+            >
+              {metrics.netProfitPerDeliveredOrderEgp.toLocaleString('en-US')} ج.م
+            </div>
+            <div className="text-[11px] text-slate-400 font-num mt-1">
+              هامش الربح الصافي: {metrics.netProfitMarginPercent}%
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-emerald-500/40 bg-[#0A0A0A] p-4">
+            <div className="text-xs text-slate-400">صافي الربح الشهري المتوقع</div>
+            <div
+              data-testid="dropship-monthly-net-profit"
+              className={`font-num text-2xl font-black mt-1 ${
+                metrics.expectedMonthlyNetProfitEgp >= 0 ? 'text-emerald-400' : 'text-red-400'
+              }`}
+            >
+              {metrics.expectedMonthlyNetProfitEgp.toLocaleString('en-US')} ج.م
+            </div>
+            <div className="text-[11px] text-slate-400 font-num mt-1">
+              لعدد {metrics.deliveredOrdersMonthly} أوردر مسلّم من {metrics.expectedMonthlyOrdersShipped}
+            </div>
+          </div>
+        </div>
+
+        {/* Unit Economics Breakdown Table */}
+        <div className="overflow-x-auto rounded-xl border border-neutral-800 bg-[#0A0A0A] p-4">
+          <h3 className="text-xs font-black text-[#F3E5AB] mb-3">
+            تحليل تكلفة الوحدة بعد تحميل عبء المرتجعات (Unit Economics per Delivered Order)
+          </h3>
+          <table className="w-full text-right text-xs border-collapse">
+            <tbody className="divide-y divide-neutral-900">
+              <tr>
+                <td className="py-2 text-slate-300">تكلفة المنتج (COGS) + التغليف</td>
+                <td className="py-2 font-num font-bold text-white">
+                  {(metrics.productCostCogsEgp + packagingCostEgp).toLocaleString('en-US')} ج.م
+                </td>
+                <td className="py-2 text-slate-300">تكلفة الإعلان الفعلية للأوردر المسلّم</td>
+                <td className="py-2 font-num font-bold text-[#D4AF37]">
+                  {metrics.effectiveCpaPerDeliveredOrderEgp.toLocaleString('en-US')} ج.م
+                </td>
+              </tr>
+              <tr>
+                <td className="py-2 text-slate-300">عبء المرتجعات المحمّل على كل أوردر ناجح (RTO Burden)</td>
+                <td className="py-2 font-num font-bold text-amber-400">
+                  {metrics.rtoPenaltyPerDeliveredOrderEgp.toLocaleString('en-US')} ج.م
+                </td>
+                <td className="py-2 text-slate-300">عمولة المنصة / الأفلييت ({platformCommissionPercent}%)</td>
+                <td className="py-2 font-num font-bold text-white">
+                  {metrics.platformCommissionAmountEgp.toLocaleString('en-US')} ج.م
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <AdSlot slotId="2020293842" placement="inside_result_box" label="إعلان أسفل النتيجة" />
+    </div>
+  );
+}
+
+/* ============================================================================
+ * MAIN EXPORTED ROUTER FOR ALL EXPANDED MASTER HUB TOOLS
  * ========================================================================== */
 export const EXPANDED_48_SLUGS = new Set([
   'rosca-gameya-calculator',
@@ -2817,6 +3224,7 @@ export const EXPANDED_48_SLUGS = new Set([
   'inventory-stock-sheet-maker',
   'cash-voucher-receipt-maker',
   'weekly-planner-schedule-maker',
+  'dropshipping-affiliate-pricing-engine',
 ]);
 
 export default function ExpandedMasterEngines({ tool }) {
@@ -2824,6 +3232,9 @@ export default function ExpandedMasterEngines({ tool }) {
   const { slug, engineType, defaultParams } = tool;
   const key = slug || engineType;
 
+  if (key === 'dropshipping-affiliate-pricing-engine') {
+    return <DropshippingAffiliatePricingEngine defaultParams={defaultParams} />;
+  }
   if (key === 'egypt-national-id-analyzer') {
     return <EgyptNationalIdAnalyzerEngine defaultParams={defaultParams} />;
   }

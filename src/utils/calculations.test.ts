@@ -765,7 +765,7 @@ test('48 New Expanded Master Hub Tools (ExpandedMasterEngines) register with isM
   } = await import('../../components/engines/ExpandedMasterEngines.jsx');
 
   const masters = getMasterTools();
-  assert.equal(EXPANDED_48_SLUGS.size, 48);
+  assert.equal(EXPANDED_48_SLUGS.size, 49);
 
   // Verify every single one of the 48 slugs exists in getMasterTools() with isMasterTool: true
   const slugSet = new Set(masters.map((t: { slug: string }) => t.slug));
@@ -921,14 +921,14 @@ test('ProductPromoStudio (`product-promo-badge-maker`) provides all 16 distinct 
   assert.equal(sampleRgba[7], 255); // Gold pixel alpha remained 255
 });
 
-test('SiteQADiagnosticSuite (`runMasterToolsEngineStressTest`) stress-tests all 107 Master Hub Tools with zero NaN or undefined results', async () => {
+test('SiteQADiagnosticSuite (`runMasterToolsEngineStressTest`) stress-tests all 108 Master Hub Tools with zero NaN or undefined results', async () => {
   const { runMasterToolsEngineStressTest } = await import(
     '../../components/admin/SiteQADiagnosticSuite.jsx'
   );
   const { getMasterTools } = await import('../../lib/tools-matrix-generator.js');
 
   const masterTools = getMasterTools();
-  assert.equal(masterTools.length, 107);
+  assert.equal(masterTools.length, 108);
 
   const report = runMasterToolsEngineStressTest(masterTools, {
     gold: { karat21: 3811, karat24: 4355 },
@@ -936,8 +936,8 @@ test('SiteQADiagnosticSuite (`runMasterToolsEngineStressTest`) stress-tests all 
     energyAndUtilities: { fuel80: 20.75, fuel92: 22.25, fuel95: 24.0, diesel: 19.5 },
   });
 
-  assert.equal(report.totalTools, 107);
-  assert.equal(report.passedCount, 107);
+  assert.equal(report.totalTools, 108);
+  assert.equal(report.passedCount, 108);
   assert.equal(report.failedCount, 0);
   assert.equal(report.allPassed, true);
 
@@ -946,3 +946,67 @@ test('SiteQADiagnosticSuite (`runMasterToolsEngineStressTest`) stress-tests all 
     assert.ok(Number.isFinite(row.sampleOutput), `Tool ${row.slug} returned NaN`);
   }
 });
+
+test('Revenue Recovery & Automation Pack: Dropshipping ROAS Engine, Webhook Broadcaster, Floating Scratchpad, and External Widget Embed', async () => {
+  const {
+    calculateDropshippingAffiliatePricing,
+    buildEgyptLiveRatesBroadcastPayload,
+  } = await import('./calculations');
+  const { computeScratchpadSummary } = await import('../../components/FloatingScratchpad.jsx');
+  const { buildEgyptWidgetIframeCode } = await import(
+    '../../app/embed/egypt-rates-widget/page.jsx'
+  );
+
+  // 1. Dropshipping, Affiliate & E-Commerce Pricing Engine
+  const drop = calculateDropshippingAffiliatePricing({
+    productCostCogsEgp: 300,
+    packagingCostEgp: 20,
+    platformCommissionPercent: 10,
+    shippingFeeDeliveredEgp: 60,
+    returnShippingFeeRtoEgp: 30,
+    deliverySuccessRatePercent: 80,
+    adSpendCpaPerOrderEgp: 100,
+    targetNetMarginPercent: 25,
+    sellingPriceEgp: 750,
+    expectedMonthlyOrdersShipped: 200,
+  });
+
+  assert.ok(drop.recommendedSellingPriceEgp > 600);
+  assert.ok(drop.breakEvenRoas > 1);
+  assert.equal(drop.deliveredOrdersMonthly, 160);
+  assert.equal(drop.returnedOrdersMonthly, 40);
+  assert.ok(Number.isFinite(drop.expectedMonthlyNetProfitEgp));
+
+  // 2. Webhook & Telegram Broadcast Payload Builder
+  const broadcast = buildEgyptLiveRatesBroadcastPayload(
+    {
+      gold: { karat21: 3811, karat24: 4355, karat18: 3267, goldCoin8g: 30488 },
+      currenciesToEgp: { USD: 50.45, SAR: 13.45 },
+      energyAndUtilities: { fuel80: 20.75, fuel92: 22.25, fuel95: 24.0, diesel: 19.5 },
+    },
+    'https://dix-tools.vercel.app'
+  );
+
+  assert.equal(broadcast.jsonPayload.goldEgp.karat21, 3811);
+  assert.equal(broadcast.jsonPayload.currenciesToEgp.USD, 50.45);
+  assert.equal(broadcast.jsonPayload.fuelPricesEgp.fuel92, 22.25);
+  assert.ok(broadcast.formattedMessage.includes('Dix Tools'));
+  assert.ok(
+    broadcast.formattedMessage.includes('3,811') || broadcast.formattedMessage.includes('3811')
+  );
+
+  // 3. Floating Scratchpad cumulative summary
+  const summary = computeScratchpadSummary([
+    { id: '1', label: 'ذهب عيار 21', value: 3811 },
+    { id: '2', label: 'قسط شهري', value: 6189 },
+  ]);
+  assert.equal(summary.countNumeric, 2);
+  assert.equal(summary.sumNumeric, 10000);
+  assert.equal(summary.averageNumeric, 5000);
+
+  // 4. External Egypt Rates Widget iframe snippet
+  const iframeCode = buildEgyptWidgetIframeCode('https://dix-tools.vercel.app');
+  assert.ok(iframeCode.includes('/#/embed/egypt-rates-widget'));
+  assert.ok(iframeCode.includes('تحديث لحظي عبر منصة Dix Tools'));
+});
+
